@@ -9,6 +9,7 @@ from race_05_env import Race05Env
 # for dbg purposes
 torch.manual_seed(0)
 #torch.autograd.set_detect_anomaly(True)
+torch.set_printoptions(threshold=3000, sci_mode=False, linewidth=100)
 
 def mlp(sizes, activation=nn.ReLU, output_activation=nn.Identity):
     layers = []
@@ -18,14 +19,14 @@ def mlp(sizes, activation=nn.ReLU, output_activation=nn.Identity):
     return nn.Sequential(*layers)
 
 def train(hidden_sizes=[32], lr=0, nlogits=0,
-          epochs=100000, batch_size=1000, render=False):
+          epochs=1000, batch_size=2000, render=False):
 
     env = Race05Env()
 
     # pos and velocity, two dimensions
     action_dim = nlogits
     q_dim = 1
-    obs_dim = 4
+    obs_dim = 12
     model = mlp(sizes=[obs_dim]+hidden_sizes+[nlogits + q_dim])
     model_optimizer = Adam(model.parameters(), lr=lr)
     loss_func = torch.nn.HuberLoss()
@@ -42,12 +43,13 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
 
     def train_one_epoch(epoch_idx):
         # obs = [x, y, vx, vy]
-        batch_obs = torch.empty((batch_size, 4))
-        batch_obsp = torch.empty((batch_size, 4))
+        batch_obs = torch.empty((batch_size, obs_dim))
+        batch_obsp = torch.empty((batch_size, obs_dim))
         batch_acts = torch.empty(batch_size)
         batch_critic_vals = torch.empty(batch_size)
         batch_returns = torch.empty(batch_size)
         batch_lens = torch.empty(batch_size)
+        batch_finished = torch.empty(batch_size)
 
         obs, _, _ = env.reset(True)
         done = False
@@ -58,12 +60,12 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
         while True:
             if done or iteration >= batch_size:
                 batch_lens[num_episodes] = iteration - last_ep_iteration
+                batch_finished[num_episodes] = finished
                 num_episodes += 1
 
                 get_expected_returns(batch_returns[last_ep_iteration:iteration], iteration - last_ep_iteration)
 
                 # reset for next episode
-                #print('done', iteration - last_ep_iteration, iteration, last_ep_iteration)
                 obs, done, last_ep_iteration = env.reset()
 
                 if iteration >= batch_size:
@@ -89,10 +91,8 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
             a = torch.tensor([np.cos(theta), np.sin(theta)]) 
             
             # progress agent
-            obs, rew, done = env.step(a)
+            obs, rew, done, finished = env.step(a)
 
-            #print(res, obs, rew)
-            
             batch_obsp[iteration,:] = obs
             batch_acts[iteration] = act_prob
             batch_critic_vals[iteration] = critic_val
@@ -104,20 +104,20 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
         model_batch_loss.backward()
         model_optimizer.step()
 
-        print(batch_obs[-120:-1,:])
+        #print(torch.concat((batch_obs[-200:-1,0:4], batch_acts[-200:-1].unsqueeze(1), batch_returns[-200:-1].unsqueeze(1)), dim=1))
 
-        return model_batch_loss, batch_lens.resize_(num_episodes)
+        return model_batch_loss, batch_lens.resize_(num_episodes), batch_finished.resize_(num_episodes)
 
     # training loop
     for i in range(epochs):
-        model_batch_loss, batch_lens = train_one_epoch(i)
-        print('epoch: %3d \t loss: %.3f \t ep_len: %.3f'%
-                (i, model_batch_loss, torch.mean(batch_lens)))
+        model_batch_loss, batch_lens, batch_finished = train_one_epoch(i)
+        print('epoch: %3d \t loss: %.3f \t ep_len: %.3f \t num_finished = %.3f'%
+                (i, model_batch_loss, torch.mean(batch_lens), torch.mean(batch_finished)))
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--nlogits', type=int, default=4)
-    parser.add_argument('--lr', type=float, default=1e-2)
+    parser.add_argument('--lr', type=float, default=1e-3)
     args = parser.parse_args()
     train(lr=args.lr, nlogits=args.nlogits)
