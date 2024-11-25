@@ -19,7 +19,7 @@ def mlp(sizes, activation=nn.ReLU, output_activation=nn.Identity):
     return nn.Sequential(*layers)
 
 def train(hidden_sizes=[32], lr=0, nlogits=0,
-          epochs=1000, batch_size=2000, render=False):
+          epochs=1000, batch_size=4000, render=False):
 
     env = Race05Env()
 
@@ -27,6 +27,7 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
     action_dim = nlogits
     q_dim = 1
     obs_dim = 12
+    gamma = 0.99
     model = mlp(sizes=[obs_dim]+hidden_sizes+[nlogits + q_dim])
     model_optimizer = Adam(model.parameters(), lr=lr)
     loss_func = torch.nn.HuberLoss()
@@ -37,7 +38,6 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
         return actor_loss.mean() + critic_loss
 
     def get_expected_returns(returns, ep_len):
-        gamma = 0.99
         for i in range(2, ep_len+1):
             returns[-i] = gamma**(i-1)*returns[-i] + returns[-i+1]
 
@@ -103,8 +103,6 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
         model_batch_loss = compute_loss(batch_critic_vals, batch_acts, batch_returns)
         model_batch_loss.backward()
         model_optimizer.step()
-
-        #print(torch.concat((batch_obs[-200:-1,0:4], batch_acts[-200:-1].unsqueeze(1), batch_returns[-200:-1].unsqueeze(1)), dim=1))
 
         return model_batch_loss, batch_lens.resize_(num_episodes), batch_finished.resize_(num_episodes)
 
