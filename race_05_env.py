@@ -23,9 +23,15 @@ class Race05Env(RaceEnv):
             else:
                 self.dir_vectors[i:i+1,:] = torch.Tensor([1, 0]).to(dtype=torch.float32)
 
+        # encode some information about where the track boundaries are
+        wall_distances = torch.Tensor([-10, 10, 0, 150]).to(dtype=torch.float32)
+
         self.init_state = torch.cat(
             (torch.tensor([x, y, vx, vy], dtype=torch.float32),
-             torch.flatten(self.dir_vectors[0:self.num_future_dir_vectors])))
+             torch.flatten(self.dir_vectors[0:self.num_future_dir_vectors]),
+             wall_distances))
+
+        self.obs_dim = self.init_state.shape[0]
 
         self.state = self.init_state.clone()
 
@@ -51,8 +57,31 @@ class Race05Env(RaceEnv):
         statep[4:4+2*self.num_future_dir_vectors] = torch.flatten(
             self.dir_vectors[tile_id+1:tile_id+1+self.num_future_dir_vectors])
 
-        self.state = statep
+        x, y = self.state[0], self.state[1]
+        """
+        if(y < 100):
+            xleft = x/20
+        else:
+            xleft = x/120
+        xright = 1 - xleft
         
+        if(x < 20):
+            ytop = (150-y)/150
+        else:
+            ytop = (100-y)/150
+        ybottom = 1 - ytop
+        """
+        xleft = x/120
+        xright = 1-xleft
+        ybottom = y/150
+        ytop = 1-ybottom
+
+        wall_distances = torch.Tensor([xleft, xright, ybottom, ytop]).to(dtype=torch.float32)
+
+        # append track boundary information to state
+        statep[4+2*self.num_future_dir_vectors:4+2*self.num_future_dir_vectors+4] = wall_distances
+
+        self.state = statep
         crashed = not self.is_pos_valid()
         finished = (tile_id == self.num_tiles - 1)
         done = crashed or finished

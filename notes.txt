@@ -1,11 +1,18 @@
 Configs (track top boundary = 150) 
-hidden = [32], nfd = 2 -> max ~= 0.55
-hidden = [32], nfd = 4 -> max ~= 0.80
-hidden = [32], nfd = 5 -> max ~= 0.55
+hidden = [32], nfd = 4 -> max ~= 0.78
+hidden = [32], nfd = 4, track boundary info (fractions on boundaries) -> max ~= 0.81
+hidden = [32], nfd = 4, track boundary info (fractions in square) -> max ~= 1.00
+hidden = [32], ndf = 4, dir_vectors = 0.1 -> max ~= 0.67
+hidden = [32], nfd = 4, nlogits=16 -> max ~= 0.46
 hidden = [64], nfd = 4 -> max ~= 0.62
+hidden = [32], nfd = 2 -> max ~= 0.55
+hidden = [32], nfd = 3 -> max ~= 0.55
+hidden = [32], nfd = 5 -> max ~= 0.55
 hidden = [32], ndf = 8 -> max ~= 0.55
 hidden = [32], nfd = 8, layernorm -> max ~= 0.55
 hidden = [64], nfd = 8, layernorm -> max ~= 60
 hidden = [64], ndf = 8 -> max ~= 0.55
-hidden = [32, 32], ndf = 8 -> max ~= 0.55
 hidden = [64], ndf = 8, dir_vectors = 0.1 -> max ~= 0.65
+hidden = [32, 32], ndf = 8 -> max ~= 0.55
+
+# conclusion: Hyperparam fiddling not working. Likely agent needs more track info.

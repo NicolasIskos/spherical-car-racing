@@ -9,7 +9,7 @@ from race_05_env import Race05Env
 # for dbg purposes
 torch.manual_seed(0)
 #torch.autograd.set_detect_anomaly(True)
-torch.set_printoptions(threshold=3000, sci_mode=False, linewidth=100)
+torch.set_printoptions(threshold=5000, sci_mode=False, linewidth=100)
 
 def mlp(sizes, activation=nn.ReLU, output_activation=nn.Identity):
     layers = []
@@ -18,7 +18,7 @@ def mlp(sizes, activation=nn.ReLU, output_activation=nn.Identity):
         layers += [nn.Linear(sizes[j], sizes[j+1]), act()]
     return nn.Sequential(*layers)
 
-def train(hidden_sizes=[32], lr=0, nlogits=0,
+def train(hidden_sizes=[36], lr=0, nlogits=0,
           epochs=1000, batch_size=2048, render=False):
 
     env = Race05Env()
@@ -30,7 +30,7 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
     q_dim = 1
 
     # (x, y, vx, vy) + 2 dims for each future track direction vectors
-    obs_dim = 4 + 2*env.num_future_dir_vectors
+    obs_dim = env.obs_dim
     gamma = 0.99
     model = mlp(sizes=[obs_dim]+hidden_sizes+[nlogits + q_dim])
     model_optimizer = Adam(model.parameters(), lr=lr)
@@ -48,7 +48,6 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
     def train_one_epoch(epoch_idx):
         # obs = [x, y, vx, vy]
         batch_obs = torch.empty((batch_size, obs_dim))
-        batch_obsp = torch.empty((batch_size, obs_dim))
         batch_acts = torch.empty(batch_size)
         batch_critic_vals = torch.empty(batch_size)
         batch_returns = torch.empty(batch_size)
@@ -80,11 +79,13 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
             # save obs
             batch_obs[iteration,:] = obs
 
+            #print(obs)
+
             # act in the environment
             res = model(obs)
 
             # this is DPG. We can't handle continuous action spaces yet,
-            # so break up the max accel traction circle into 16 possible directions and choose one.
+            # so break up the max accel traction circle into nlogits possible directions and choose one.
             # res[0:nlogits] = [theta_logits], res[nlogits:] = Q val
             act_logits, critic_val = res[0:nlogits], res[nlogits:]
             act = torch.distributions.categorical.Categorical(logits=act_logits).sample().item()
@@ -97,7 +98,6 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
             # progress agent
             obs, rew, done, finished = env.step(a)
 
-            batch_obsp[iteration,:] = obs
             batch_acts[iteration] = act_prob
             batch_critic_vals[iteration] = critic_val
             batch_returns[iteration] = rew
@@ -107,6 +107,9 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
         model_batch_loss = compute_loss(batch_critic_vals, batch_acts, batch_returns)
         model_batch_loss.backward()
         model_optimizer.step()
+
+        #if(torch.max(batch_finished) > 190):
+        #    print("cow", batch_obs[-1000:,0:4], torch.max(batch_finished))
 
         return model_batch_loss, batch_lens.resize_(num_episodes), batch_finished.resize_(num_episodes)
 
