@@ -21,7 +21,7 @@ class Race05Env(RaceEnv):
             if i < 100:
                 self.dir_vectors[i:i+1,:] = torch.Tensor([0, 1]).to(dtype=torch.float32)
             else:
-                self.dir_vectors[i:i+1,:] = torch.Tensor([1,0]).to(dtype=torch.float32)
+                self.dir_vectors[i:i+1,:] = torch.Tensor([1, 0]).to(dtype=torch.float32)
 
         self.init_state = torch.cat(
             (torch.tensor([x, y, vx, vy], dtype=torch.float32),
@@ -35,7 +35,7 @@ class Race05Env(RaceEnv):
         
         if 0 <= y and y <= 100 and 0 <= x and x <= 20:
             return True
-        if 100 <= y and y <= 300 and 0 <= x:
+        if 100 <= y and y <= 150 and 0 <= x:
             return True
         return False
 
@@ -59,7 +59,7 @@ class Race05Env(RaceEnv):
         rew = self.get_reward()        
         self.iter_counter += 1
 
-        return statep, rew, done, finished
+        return statep, rew, done, tile_id
     
     def get_tile_id(self):
         x, y = self.state[0], self.state[1]

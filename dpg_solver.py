@@ -19,14 +19,18 @@ def mlp(sizes, activation=nn.ReLU, output_activation=nn.Identity):
     return nn.Sequential(*layers)
 
 def train(hidden_sizes=[32], lr=0, nlogits=0,
-          epochs=1000, batch_size=4000, render=False):
+          epochs=1000, batch_size=2048, render=False):
 
     env = Race05Env()
 
     # pos and velocity, two dimensions
     action_dim = nlogits
+
+    # one value for critic output
     q_dim = 1
-    obs_dim = 12
+
+    # (x, y, vx, vy) + 2 dims for each future track direction vectors
+    obs_dim = 4 + 2*env.num_future_dir_vectors
     gamma = 0.99
     model = mlp(sizes=[obs_dim]+hidden_sizes+[nlogits + q_dim])
     model_optimizer = Adam(model.parameters(), lr=lr)
@@ -109,8 +113,11 @@ def train(hidden_sizes=[32], lr=0, nlogits=0,
     # training loop
     for i in range(epochs):
         model_batch_loss, batch_lens, batch_finished = train_one_epoch(i)
-        print('epoch: %3d \t loss: %.3f \t ep_len: %.3f \t num_finished = %.3f'%
-                (i, model_batch_loss, torch.mean(batch_lens), torch.mean(batch_finished)))
+        print('epoch: %3d \t loss: %.3f \t ep_len: %.3f \t avg progress = %.3f \t max progress = %.3f'%
+                (i, model_batch_loss, 
+                torch.mean(batch_lens), 
+                torch.mean(batch_finished) / (env.num_tiles - 1),
+                torch.max(batch_finished) / (env.num_tiles - 1)))
 
 if __name__ == '__main__':
     import argparse
