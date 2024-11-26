@@ -9,7 +9,7 @@ from race_05_env import Race05Env
 # for dbg purposes
 torch.manual_seed(0)
 #torch.autograd.set_detect_anomaly(True)
-torch.set_printoptions(threshold=5000, sci_mode=False, linewidth=100)
+torch.set_printoptions(threshold=10000, sci_mode=False, linewidth=100)
 
 def mlp(sizes, activation=nn.ReLU, output_activation=nn.Identity):
     layers = []
@@ -108,8 +108,8 @@ def train(hidden_sizes=[36], lr=0, nlogits=0,
         model_batch_loss.backward()
         model_optimizer.step()
 
-        #if(torch.max(batch_finished) > 190):
-        #    print("cow", batch_obs[-1000:,0:4], torch.max(batch_finished))
+        #if(torch.max(batch_finished) == 220):
+        #    print("cow", batch_obs[-2000:,0:4], torch.max(batch_finished))
 
         return model_batch_loss, batch_lens.resize_(num_episodes), batch_finished.resize_(num_episodes)
 

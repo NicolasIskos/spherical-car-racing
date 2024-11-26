@@ -16,3 +16,8 @@ hidden = [64], ndf = 8, dir_vectors = 0.1 -> max ~= 0.65
 hidden = [32, 32], ndf = 8 -> max ~= 0.55
 
 # conclusion: Hyperparam fiddling not working. Likely agent needs more track info.
+# Providing fractional distance from top and left walls helped agent to occasionally find solution
+# But very unstable... Even small changes in hyperparams completely change result
+# Track direction vectors maybe not the move?
+# Perhaps will work better to just give track boundaries as input?
+# Need to figure out how to normalize input and choose batch_size, alpha, and mlp_dim

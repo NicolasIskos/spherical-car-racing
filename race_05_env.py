@@ -24,7 +24,7 @@ class Race05Env(RaceEnv):
                 self.dir_vectors[i:i+1,:] = torch.Tensor([1, 0]).to(dtype=torch.float32)
 
         # encode some information about where the track boundaries are
-        wall_distances = torch.Tensor([-10, 10, 0, 150]).to(dtype=torch.float32)
+        wall_distances = torch.Tensor([0.5, 0.5, 0, 1]).to(dtype=torch.float32)
 
         self.init_state = torch.cat(
             (torch.tensor([x, y, vx, vy], dtype=torch.float32),
@@ -58,19 +58,6 @@ class Race05Env(RaceEnv):
             self.dir_vectors[tile_id+1:tile_id+1+self.num_future_dir_vectors])
 
         x, y = self.state[0], self.state[1]
-        """
-        if(y < 100):
-            xleft = x/20
-        else:
-            xleft = x/120
-        xright = 1 - xleft
-        
-        if(x < 20):
-            ytop = (150-y)/150
-        else:
-            ytop = (100-y)/150
-        ybottom = 1 - ytop
-        """
         xleft = x/120
         xright = 1-xleft
         ybottom = y/150
@@ -102,7 +89,7 @@ class Race05Env(RaceEnv):
         tile_id = self.get_tile_id()
 
         if(tile_id not in self.tiles_visited):
-            reward = 2
+            reward = 1
         else:
             reward = 0
         
