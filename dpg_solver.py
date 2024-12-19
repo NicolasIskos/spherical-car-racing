@@ -29,7 +29,6 @@ def train(hidden_sizes=[36], lr=0, nlogits=0,
     # one value for critic output
     q_dim = 1
 
-    # (x, y, vx, vy) + 2 dims for each future track direction vectors
     obs_dim = env.obs_dim
     gamma = 0.99
     model = mlp(sizes=[obs_dim]+hidden_sizes+[nlogits + q_dim])
@@ -79,8 +78,6 @@ def train(hidden_sizes=[36], lr=0, nlogits=0,
             # save obs
             batch_obs[iteration,:] = obs
 
-            #print(obs)
-
             # act in the environment
             res = model(obs)
 
@@ -108,8 +105,7 @@ def train(hidden_sizes=[36], lr=0, nlogits=0,
         model_batch_loss.backward()
         model_optimizer.step()
 
-        #if(torch.max(batch_finished) == 220):
-        #    print("cow", batch_obs[-2000:,0:4], torch.max(batch_finished))
+        #print("cow", torch.concat((batch_obs[-2000:,0:4], batch_acts[-2000:].unsqueeze(-1)),dim=1), torch.max(batch_finished[0:num_episodes]))
 
         return model_batch_loss, batch_lens.resize_(num_episodes), batch_finished.resize_(num_episodes)
 

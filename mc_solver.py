@@ -1,13 +1,14 @@
 import torch
 import random
 import matplotlib.pyplot as plt
+from plot_trajectories import plot as plot
 
 torch.set_printoptions(threshold=10000, sci_mode=False, linewidth=100)
 
 n_actions = 5
-n_episodes = 1024
+n_episodes = 16
 n_runs = 1
-ep_len_limit = 16384
+ep_len_limit = 8192
 
 # initialize state values 
 n_xtiles = 80
@@ -16,14 +17,25 @@ n_xspeeds = 6
 n_yspeeds = 6
 
 state_vals = torch.empty((n_xtiles, n_ytiles, n_xspeeds, n_yspeeds))
-state_vals[:,:,:,:] = -80
+
+# sensitive to initial values. Too high and the algo is far too optimistic 
+# and never converges. Too low and the algo doesn't explore enough early on. 
+# Policy is attracted to known states ven when they're suboptimal.
+state_vals[:,:,:,:] = -500
 
 # hyperparams
-alpha = 1e-3
+alpha = 1e-2
 gamma = 1
 eps = 0.02
 
 init_state = torch.Tensor([10, 0, 0, 0]).to(dtype=torch.long)
+
+run_avg_ep_lens = torch.zeros(n_episodes)
+min_ep_len = ep_len_limit
+min_ep_len_states = torch.empty((ep_len_limit+1, 4))
+
+n_lastfew = 2
+last_few_episode_states = []
 
 def get_new_state(state, action):
     # if action causes us to finish the race, the episode is finished
@@ -77,10 +89,6 @@ def get_action(state):
 
     return action
 
-run_avg_ep_lens = torch.zeros(n_episodes)
-min_ep_len = ep_len_limit
-min_ep_len_states = torch.empty((ep_len_limit, 4))
-
 for run in range(n_runs):
     # main loop
     ep_lens = torch.empty(n_episodes)
@@ -106,25 +114,32 @@ for run in range(n_runs):
         # save ep len
         ep_lens[episode] = step
 
+        # keep track of best episode
         if(step < min_ep_len):
             min_ep_len = step
             min_ep_len_states[0:step+1] = visited_states
+
+        # if last few episodes, add to log
+        if n_episodes - episode <= n_lastfew:
+            last_few_episode_states.append((visited_states, step))
         
         # convert returns to prefix sum (potentially discounted)
         for i in range(2, step+1):
             returns[-i] = gamma**(i-1)*returns[-i] + returns[-i+1]
 
-        # update policy by updating Q values
+        # update policy by updating Q values, first visit
+        state_set = set()
         for i in range(2, step-1):
             s = visited_states[-i]
-            ret = returns[-i+1]
-            # For now, simply have each state val be the average of its sampled future returns
-            state_vals[tuple(s)] += alpha * (ret - state_vals[tuple(s)])
+            if(s not in state_set):
+                state_set.add(tuple(s))
+                ret = returns[-i+1]
+                # For now, simply have each state val be the average of its sampled future returns
+                state_vals[tuple(s)] += alpha * (ret - state_vals[tuple(s)])
 
     run_avg_ep_lens += ep_lens
 run_avg_ep_lens /= n_runs
 
 print(torch.min(ep_lens))
-print(min_ep_len_states[0:min_ep_len+1])
-plt.plot(min_ep_len_states[0:min_ep_len+1,0:1], min_ep_len_states[0:min_ep_len+1,1:2])
-plt.show()
+#print(min_ep_len_states[0:min_ep_len+1])
+plot(last_few_episode_states, min_ep_len_states, min_ep_len, init_state)
