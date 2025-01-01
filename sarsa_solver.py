@@ -13,10 +13,10 @@ ep_len_limit = 8192
 
 # initialize state values 
 n_xtiles = 80
-n_ytiles = 20
+n_ytiles = 80
 n_xspeeds = 6
 n_yspeeds = 6
-bounds = ([20, 20, 80], [0, 10, 10])
+bounds = ([20, 20, 80], [0, 60, 60])
 
 state_vals = torch.empty((n_xtiles, n_ytiles, n_xspeeds, n_yspeeds))
 
@@ -24,17 +24,18 @@ state_vals = torch.empty((n_xtiles, n_ytiles, n_xspeeds, n_yspeeds))
 # and never converges. Too low and the algo doesn't explore enough early on. 
 # Policy is attracted to known states ven when they're suboptimal.
 state_vals[:,:,:,:] = -100
+state_vals[n_xtiles-1:n_xtiles,:,:,:] = 0
 
 # hyperparams
 alpha = 1e-2
 gamma = 1
-eps = 0.1
+eps=0.1
 
 init_state = torch.Tensor([10, 0, 0, 0]).to(dtype=torch.long)
 
 run_avg_ep_lens = torch.zeros(n_episodes)
 min_ep_len = ep_len_limit
-min_ep_len_states = torch.empty((ep_len_limit+1, 4))
+min_ep_len_states = torch.empty((ep_len_limit+1, 4), dtype=torch.long)
 
 n_lastfew = 2
 last_few_episode_states = []
@@ -58,7 +59,7 @@ def get_new_state(state, action):
     
     # if action causes a crash, set us back to the start and continue episode
     x, y = statep[0], statep[1]
-    if(x < 0 or y >= 20 or (x >= 20 and y < 10)):
+    if(x < 0 or y >= 80 or (x >= 20 and y < 60)):
         statep.copy_(init_state)
         return statep, False
 
@@ -91,7 +92,26 @@ def get_action(state):
 
     return action
 
-# main loop
+def apply_sarsa_update(old_state, state, done, ret):
+    state_vals[tuple(old_state)] += alpha * (ret + gamma*state_vals[tuple(state)]-state_vals[tuple(old_state)])
+
+def evaluate_policy():
+    # turn off e-greedy for policy evaluation
+    eps = 0
+
+    done = False
+    step = 0
+    state = init_state.clone()
+    visited_states = torch.empty((ep_len_limit+1, 4), dtype=torch.long)
+    visited_states[0] = state
+    while(not done and step < ep_len_limit):
+        action = get_action(state)
+        state, done = get_new_state(state, action)
+        visited_states[step + 1] = state
+        step += 1
+
+    return visited_states, step
+
 ep_lens = torch.empty(n_episodes)
 for episode in range(n_episodes):
     done = False
@@ -99,18 +119,21 @@ for episode in range(n_episodes):
     state = init_state.clone()
     visited_states = torch.empty((ep_len_limit+1, 4), dtype=torch.long)
     visited_states[0] = state
-    returns = torch.empty(ep_len_limit)
+
+    # run episode
     while(not done and step < ep_len_limit):
+        old_state = state.clone()
         action = get_action(state)
         state, done = get_new_state(state, action)
         visited_states[step + 1] = state
-        returns[step] = -1
         step += 1
 
-    visited_states.resize_((step+1, 4))
-    returns.resize_(step)
-    
+        # inline update
+        apply_sarsa_update(old_state, state, done, ret=-1)
+
     eps *= 0.999
+
+    visited_states.resize_((step+1, 4))
 
     print('finished', step)
 
@@ -125,23 +148,12 @@ for episode in range(n_episodes):
     # if last few episodes, add to log
     if n_episodes - episode <= n_lastfew:
         last_few_episode_states.append((visited_states, step))
-    
-    # convert returns to prefix sum (potentially discounted)
-    for i in range(2, step+1):
-        returns[-i] = gamma**(i-1)*returns[-i] + returns[-i+1]
 
-    # update policy by updating Q values, first visit
-    state_set = set()
-    for i in range(2, step-1):
-        s = visited_states[-i]
-        if(s not in state_set):
-            state_set.add(tuple(s))
-            ret = returns[-i+1]
-            # For now, simply have each state val be the average of its sampled future returns
-            state_vals[tuple(s)] += alpha * (ret - state_vals[tuple(s)])
-
+# evaluate final policy
+final_policy, final_policy_ep_len = evaluate_policy()
+print(final_policy_ep_len)
 print(torch.min(ep_lens))
-#print(min_ep_len_states[0:min_ep_len+1])
+
 plot(last_few_episode_states, min_ep_len_states, min_ep_len, init_state, bounds)
 # Don't include finish states, because their values are very high, messes up contrast.
 show_state_heatmap(state_vals[:-1,:,:,:])
