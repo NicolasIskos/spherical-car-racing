@@ -1,4 +1,26 @@
-# e-Greedy Monte Carlo
+# Setup
+
+In the diagrams below, the car starts from (X=10, Y=0), drives around a cone at position (X=20, Y=10), and crosses the finish line at X=80. It simulates a simple Autocross corner.
+
+## Environment
+
+The state space is descretized in both spatial and velocity dimensions. At any given state, the available next states are dictated by the traction of the tires (the car is assumed to have infinite power). If the car hits a wall, it restarts at the beginning of the track. The episode only ends when the car crosses the finish line.
+
+## Reinforcement Learning Setup
+
+We aim to use two different reinforcement learning techniques. In each case,
+we define a value function $Q(s,a)$ where $s$ is the state and $a$ is the action taken at that state. We also define a reward $r$ for each possible state-action pair. In our case, $r$ wil always be -1. This way, the highest total reward will come when the number of actions (and thus time steps) is minimized.
+
+## e-Greedy Monte Carlo
+
+The first approach is e-Greedy Monte Carlo. The car greedily chooses the action $a$ that has the highest $Q(s, a)$ with probability 1-epsilon. Otherwise, the car chooses randomly. At the end of the episode, all traversed states are updated according to the following relation. Note some states may be updated more than once.
+
+$Q(s,a) = Q(s',a') + r$
+
+On applying this technique to the racetrack problem: 
+
+Note: For the purposes of visualization, all possible velocity state values are averaged for each position and color coded based numerical value. The goal is for the highest value states to trace out the path of an optimal racing line.
+
 ![Monte Carlo](images/monte_carlo.png)
 - Solution is often way off optimal
 - Often converges to a value worse than optimal
@@ -6,7 +28,14 @@
 - Setting initial Q too small means policy rarely explores new states if there’s an option to go to a known state -> policy is suboptimal 
 - Setting initial Q too large means policy frequently explores new states when there’s an option to go to an unknown state -> policy converges very slowly, doesn’t care even when a decent solution is found.
 
-# SARSA Semi-gradient
+## SARSA Semi-gradient
+
+The second technique is SARSA Semi-gradient. SARSA is a temporal difference technique. Rather than updating states only at the end of the episode, this technique updates states as it traverses them. Specifically,
+
+$Q(s,a) = Q(s,a) + \alpha[r+\gamma Q(s', a') - Q(s, a)]$
+
+A few notes on applying this technique to the racetrack problem:
+
 ![Sarsa Semi-gradient](images/sarsa.png)
 - Works significantly better than MC.
 - Converges faster and to a better solution.
