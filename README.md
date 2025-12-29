@@ -2,6 +2,8 @@
 
 In the diagrams below, the car starts from (X=10, Y=0), drives around a cone at position (X=20, Y=10), and crosses the finish line at X=80. It simulates a simple Autocross corner.
 
+![Track Layout](images/track.png)
+
 ## Environment
 
 The state space is descretized in both spatial and velocity dimensions. At any given state, the available next states are dictated by the traction of the tires (the car is assumed to have infinite power). If the car hits a wall, it restarts at the beginning of the track. The episode only ends when the car crosses the finish line.
