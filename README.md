@@ -13,11 +13,13 @@ we define a value function $Q(s,a)$ where $s$ is the state and $a$ is the action
 
 ## e-Greedy Monte Carlo
 
-The first approach is e-Greedy Monte Carlo. The car greedily chooses the action $a$ that has the highest $Q(s, a)$ with probability 1-epsilon. Otherwise, the car chooses randomly. At the end of the episode, all traversed states are updated according to the following relation. Note some states may be updated more than once.
+The first approach is e-Greedy Monte Carlo. The car greedily chooses the action $a$ that has the highest $Q(s, a)$ with probability 1-epsilon. Otherwise, the car chooses randomly. At the end of the episode, all traversed states are updated according to the following relation (on first-visit).
 
-$Q(s,a) = Q(s',a') + r$
+$Q(s,a) = \gamma Q(s',a') + r$
 
-On applying this technique to the racetrack problem: 
+where where $s$ and $a$ are the state and action that immediately precede $s'$ and $a'$. $\gamma$ is a discount factor typically in the range of 0.9 to 1.
+
+Now we apply this technique to the racetrack problem.
 
 Note: For the purposes of visualization, all possible velocity state values are averaged for each position and color coded based numerical value. The goal is for the highest value states to trace out the path of an optimal racing line.
 
@@ -30,9 +32,13 @@ Note: For the purposes of visualization, all possible velocity state values are 
 
 ## SARSA Semi-gradient
 
-The second technique is SARSA Semi-gradient. SARSA is a temporal difference technique. Rather than updating states only at the end of the episode, this technique updates states as it traverses them. Specifically,
+The second technique is SARSA Semi-gradient. Like Monte Carlo, SARSA uses an epsilon-greedy approach for choosing the next state. But rather than updating states only at the end of the episode, this technique updates states as it traverses them. Specifically,
 
 $Q(s,a) = Q(s,a) + \alpha[r+\gamma Q(s', a') - Q(s, a)]$
+
+where $\alpha$ is the learning rate.
+
+This continuous state update based on the values of proximal states is what makes SARSA a temporal difference model. It is kind of a hybrid between dynamic programming and Monte Carlo techniques because it updates based on the values of proximal states, like DP, but does so following the path of randomly sampled episodes, like MC.
 
 A few notes on applying this technique to the racetrack problem:
 
